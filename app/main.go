@@ -70,7 +70,7 @@ func main() {
 }
 
 func similarityTable() {
-
+	fmt.Println("Espere similaridade entre os dois campos textuais")
 	command := `CREATE EXTENSION pg_trgm;
 	SELECT similarity(n1.nm_razao_social, n2.nm_razao_social) AS sim,n1.id_arq, n1.nm_razao_social, n1.nm_cidade, n1.nm_estado, n2.nm_razao_social, n2.cd_cnpj
 	FROM   empresainfo1 n1
@@ -100,7 +100,7 @@ func similarityTable() {
 		company := mergeCompany{similarity, idArq, nmRazaoSocial, nmCidade, nmEstado, nmRazaoSocial2, cdCnpj}
 		insertMergeComapy(company)
 	}
-
+	fmt.Println("Terminado os insert entre as similaridades das duas tabelas company")
 }
 
 func readCsv(fileName string) {
