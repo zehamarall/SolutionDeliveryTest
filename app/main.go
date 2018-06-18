@@ -14,11 +14,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const (
-	host = "db"
-	port = 5432
-)
-
 type mergeCompany struct {
 	similarity     float64
 	idArq          string
@@ -34,11 +29,14 @@ var db *sql.DB
 func initConection() {
 	password := os.Getenv("POSTGRES_USER")
 	user := os.Getenv("POSTGRES_PASSWORD")
-
+	host := os.Getenv("POSTGRES_HOST")
+	port := os.Getenv("POSTGRES_PORT")
 	dbname := os.Getenv("POSTGRES_DB")
 
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
+
+	fmt.Println(psqlInfo)
 
 	var err error
 	db, err = sql.Open("postgres", psqlInfo)
@@ -60,8 +58,10 @@ func main() {
 	})
 	initConection()
 
-	readCsvFirst()
-	readCsvSecond()
+	for i := 1; i < len(os.Args); i++ {
+		readCsv(os.Args[i])
+	}
+
 	similarityTable()
 
 	fmt.Println("Listening on :8080")
@@ -103,8 +103,8 @@ func similarityTable() {
 
 }
 
-func readCsvFirst() {
-	file, _ := os.Open("./Arquivo1.csv")
+func readCsv(fileName string) {
+	file, _ := os.Open(fileName)
 	r := csv.NewReader(bufio.NewReader(file))
 
 	for {
@@ -112,9 +112,14 @@ func readCsvFirst() {
 		if err == io.EOF {
 			break
 		}
-
-		if len(record) == 4 {
-			var lastInsertId int
+		var lastInsertId int
+		if len(record) == 2 {
+			err = db.QueryRow("INSERT INTO empresainfo2(cd_cnpj,nm_razao_social) VALUES($1,$2) returning em_id;", record[0], record[1]).Scan(&lastInsertId)
+			if err != nil {
+				fmt.Println("Error insert element ", err)
+			}
+			fmt.Println("Sucess insert ", lastInsertId)
+		} else if len(record) == 4 {
 			err = db.QueryRow("INSERT INTO empresainfo1(id_arq, nm_razao_social,nm_cidade, nm_estado) VALUES($1,$2,$3,$4) returning em_id;", record[0], record[1], record[2], record[3]).Scan(&lastInsertId)
 			if err != nil {
 				fmt.Println("Error insert element ", err)
@@ -124,33 +129,7 @@ func readCsvFirst() {
 	}
 }
 
-func readCsvSecond() {
-	file, _ := os.Open("./Arquivo2.csv")
-	r := csv.NewReader(bufio.NewReader(file))
-
-	for {
-		record, err := r.Read()
-		if err == io.EOF {
-			break
-		}
-
-		if len(record) == 2 {
-			var lastInsertId int
-			err = db.QueryRow("INSERT INTO empresainfo2(cd_cnpj,nm_razao_social) VALUES($1,$2) returning em_id;", record[0], record[1]).Scan(&lastInsertId)
-			if err != nil {
-				fmt.Println("Error insert element ", err)
-			}
-			fmt.Println("Sucess insert ", lastInsertId)
-		}
-	}
-}
-
 func insertMergeComapy(company mergeCompany) {
-	//fmt.Printf("Similarity %F  Arq %s - %s cidade %s/%s outra %s CNPJ: %s \n",
-	// company.similarity, company.idArq, company.nmRazaoSocial,
-	// company.nmCidade, company.nmEstado, company.nmRazaoSocial2,
-	// company.cdCnpj)
-
 	var lastInsertId int
 	err := db.QueryRow(`INSERT INTO merge_table_company(id_arq, nm_razao_social,
 										nm_cidade, nm_estado, nm_razao_social2, cd_cnpj) VALUES
@@ -162,5 +141,4 @@ func insertMergeComapy(company mergeCompany) {
 		fmt.Println("Error insert element ", err)
 	}
 	fmt.Println("Sucess insert ", lastInsertId)
-
 }
