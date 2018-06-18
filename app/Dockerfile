@@ -7,6 +7,6 @@ ADD . /go/src/app
 
 RUN go get -v
 
-CMD go run main.go
+CMD go run main.go Arquivo1.csv Arquivo2.csv
 
 EXPOSE 8080
